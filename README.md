@@ -1,5 +1,6 @@
 # Chat Rooms Example
 简单聊天室
+实现go语言多房间多用户聊天室
 
 ![1](./imgs/1.png "点击返回首页")
 ## Running the example
@@ -98,4 +99,4 @@ scroll position is not changed.
 
 The form handler writes the user input to the websocket and clears the input
 field.
-This is an automated change - 2025-04-15 17:47:48
+This is an automated change - 2025-04-15 17:52:18
