@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Chat Example</title>
+    <script type="text/javascript">
+        let conn;
+
+        let urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('room') || 'default';  
+        let userId = urlParams.get('userId');  
+        
+        window.onload = function () {
+            const msg = document.getElementById("msg");
+            const log = document.getElementById("log");
+            const form = document.getElementById("form");
+            const roomForm = document.getElementById("roomForm");
+
+            function appendLog(item) {
+                const doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+                log.appendChild(item);
+                if (doScroll) {
+                    log.scrollTop = log.scrollHeight - log.clientHeight;
+                }
+            }
+
+            // 初始化WebSocket连接
+            function initWebSocket() {
+                if (window.WebSocket) {
+                    // 获取当前页面的 URL 参数
+
+                    // 构造 WebSocket URL
+                    conn = new WebSocket("ws://" + document.location.host + "/ws" + `?room=${encodeURIComponent(roomId)}`);
+                    // conn = new WebSocket("ws://" + document.location.host + "/ws");
+
+                    conn.onopen = function (e) {
+                        console.log("Connection established!");
+                    };
+
+                    conn.onclose = function (evt) {
+                        const item = document.createElement("div");
+                        item.innerHTML = "<b>Connection closed.</b>";
+                        appendLog(item);
+                    };
+
+                    conn.onmessage = function (evt) {
+                        const messages = evt.data.split('\n');
+                        for (let i = 0; i < messages.length; i++) {
+                            const item = document.createElement("div");
+                            item.innerText = messages[i];
+                            appendLog(item);
+                        }
+                    };
+
+                    conn.onerror = function (err) {
+                        console.error("WebSocket error:", err);
+                    };
+                } else {
+                    const item = document.createElement("div");
+                    item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+                    appendLog(item);
+                }
+            }
+
+            // 消息发送处理
+            form.onsubmit = function (e) {
+                e.preventDefault();
+                if (!conn || conn.readyState !== WebSocket.OPEN) {
+                    alert("Connection not established!");
+                    return false;
+                }
+                if (!msg.value.trim()) return false;
+
+                const message = {
+                    type: 'message',
+                    docId: roomId, 
+                    timestamp: Date.now().toString(),
+                    clientId: userId,
+                    op: {                     // 具体操作（以文本操作为例）
+                        "type": "insert",          // 操作类型：insert/delete/update/format
+                        "pos": 10,                // 操作位置（字符偏移量）
+                        "text": msg.value.trim(),          // 插入的文本（insert操作时有效）
+                        "length": 5,              // 删除的长度（delete操作时有效）
+                        "attributes": {         // 格式属性（format时有效）
+                            "bold": true,
+                            "color": "#FF0000"
+                        }
+                    },
+                };
+                conn.send(JSON.stringify(message));
+                msg.value = "";
+                return false;
+            };
+
+            // 房间切换处理
+            roomForm.onsubmit = function (e) {
+                e.preventDefault();
+                const newRoom = document.getElementById('roomId').value.trim();
+                if (!newRoom) return false;
+
+                if (newRoom !== roomId) {
+                    const message = {
+                        type: 'system',
+                        timestamp: Date.now().toString(),
+                        command: 'CHANGE_ROOM',
+                        roomId: newRoom
+                    };
+                    conn.send(JSON.stringify(message));
+                    roomId = newRoom;
+                    document.getElementById('roomId').value = "";
+                }
+                return false;
+            };
+
+            // 初始化WebSocket连接
+            initWebSocket();
+        };
+    </script>
+    <style type="text/css">
+        html {
+            overflow: hidden;
+        }
+
+        body {
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: gray;
+        }
+
+        #log {
+            background: white;
+            margin: 0;
+            padding: 0.5em;
+            position: absolute;
+            top: 0.5em;
+            left: 0.5em;
+            right: 0.5em;
+            bottom: 7em;
+            overflow: auto;
+        }
+
+        #form {
+            padding: 0 0.5em;
+            margin: 0;
+            position: absolute;
+            bottom: 1em;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 5px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 5px;
+        }
+
+        button {
+            padding: 5px 10px;
+        }
+
+        #roomForm {
+            padding: 0 0.5em;
+            margin: 0;
+            position: absolute;
+            bottom: 4em;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="log"></div>
+    <form id="roomForm">
+        <input type="text" id="roomId" placeholder="指令信息">
+        <button type="submit">发送指令</button>
+    </form>
+    <form id="form">
+        <input type="text" id="msg" size="64" autofocus />
+        <button type="submit">发送数据</button>
+    </form>
+</body>
+
+</html>
